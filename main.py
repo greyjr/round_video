@@ -1,19 +1,15 @@
+import json
 import logging
 import os
-import time
 from logging import config
+from typing import Optional
 
-# from functools import lru_cache
-# import sys
-# import requests
 from aiogram import Bot, Dispatcher, executor
-from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
+from aiogram.types import (CallbackQuery, InlineKeyboardButton,
+                           InlineKeyboardMarkup, Message)
 from aiogram.utils.markdown import quote_html
 
 from strings import strings
-
-# from async_lru import alru_cache
-
 
 log_config = {
     "version":1,
@@ -44,31 +40,13 @@ MAX_SIZE = 8389000
 
 
 token = os.environ["BOT_TOKEN"]
-# CONNECTED_CHATS_JSON_URL = os.environ.get("CONNECTED_CHATS_JSON_URL")
-CONNECTED_CHATS_IDS = os.environ.get("CONNECTED_CHATS_IDS").split(",")
+CONNECTED_CHATS_IDS = json.loads(os.environ.get("CONNECTED_CHATS_IDS"))
 logging.info(f"connected chats ids is {CONNECTED_CHATS_IDS}")
 
 bot = Bot(token=token)
 dp = Dispatcher(bot)
 
 
-# @lru_cache()
-# def get_connected_chats(ttl_hash=None) -> dict:
-#     del ttl_hash  # to emphasize we don"t use it
-#     if CONNECTED_CHATS_JSON_URL:
-#         connected_chats = requests.get(CONNECTED_CHATS_JSON_URL).json()
-#     else:
-#         connected_chats = {}
-#     return connected_chats
-
-
-# @alru_cache()
-# async def get_chat_title(chat_id, ttl_hash=None):
-#     del ttl_hash  # to emphasize we don"t use it
-#     try:
-#         return (await bot.get_chat(chat_id)).title
-#     except:
-#         return None
 async def get_chat_title(chat_id):
     try:
         return (await bot.get_chat(chat_id)).title
@@ -76,31 +54,25 @@ async def get_chat_title(chat_id):
         return None
 
 
-# def get_ttl_hash(seconds=3600):
-#     """Return the same value withing `seconds` time period"""
-#     return round(time.time() / seconds)
-
-
-def lang(message: Message):
-    if message.from_user.language_code:
-        if message.from_user.language_code in strings.keys():
-            return message.from_user.language_code
+def lang(message: Message) -> str:
+    if message.from_user.language_code and message.from_user.language_code in strings.keys():
+        return message.from_user.language_code
     return "en"
 
 
-async def check_size(message: Message):
+async def check_size(message: Message) -> bool:
     if message.video.file_size >= MAX_SIZE:
         await bot.send_message(message.chat.id, strings[lang(message)]["size_handler"], parse_mode="Markdown")
     return message.video.file_size < MAX_SIZE
 
 
-async def check_duration(message: Message):
+async def check_duration(message: Message) -> bool:
     if message.video.duration > MAX_DURATION:
         await bot.send_message(message.chat.id, strings[lang(message)]["duration_handler"], parse_mode="Markdown")
     return message.video.duration <= MAX_DURATION
 
 
-async def check_dimensions(message: Message):
+async def check_dimensions(message: Message) -> bool:
     if abs(message.video.height - message.video.width) not in {0, 1}:
         await bot.send_message(message.chat.id, strings[lang(message)]["not_square"])
         return False
@@ -110,20 +82,19 @@ async def check_dimensions(message: Message):
     return True
 
 
-async def get_kb(user_id: int):
+async def get_kb(user_id: int) -> Optional[InlineKeyboardMarkup]:
     # TODO user_id
     if CONNECTED_CHATS_IDS:
         kb = InlineKeyboardMarkup()
         for chat_id in CONNECTED_CHATS_IDS:
             logging.info(f"{chat_id=} get keyboard")
-            # chat_name = await get_chat_title(chat_id, get_ttl_hash()) or str(chat_id)
             chat_name = await get_chat_title(chat_id) or str(chat_id)
             kb.add(InlineKeyboardButton(chat_name, callback_data="send-{}".format(chat_id)))
         return kb
 
 
 @dp.callback_query_handler(lambda call: True)
-async def callback_buttons(call: CallbackQuery):
+async def callback_buttons(call: CallbackQuery) -> None:
     if call.message and call.data:
         if call.data.startswith("send-"):
             send_chat_id = call.data.replace("send-", "")
@@ -141,7 +112,7 @@ async def callback_buttons(call: CallbackQuery):
 
 
 @dp.message_handler(commands=["start"])
-async def welcome(message: Message):
+async def welcome(message: Message) -> None:
     await bot.send_message(
         message.chat.id,
         strings[lang(message)]["start"].format(quote_html(message.from_user.first_name),
@@ -152,7 +123,7 @@ async def welcome(message: Message):
 
 
 @dp.message_handler(content_types=["video", "document", "animation"])
-async def converting(message: Message):
+async def converting(message: Message) -> None:
     if message.content_type == "video":
         if await check_size(message) and await check_dimensions(message) and await check_duration(message):
             try:
@@ -200,13 +171,13 @@ async def converting(message: Message):
 
 
 @dp.message_handler(content_types=["text"])
-async def text_handler(message: Message):
+async def text_handler(message: Message) -> None:
     if message.content_type == "text" and message.text != "/start":
         await bot.send_message(message.chat.id, strings[lang(message)]["text_handler"])
 
 
 @dp.message_handler(content_types=["video_note"])
-async def video_note_handler(message: Message):
+async def video_note_handler(message: Message) -> None:
     await bot.send_chat_action(message.chat.id, "upload_video")
     try:
         await bot.send_video(message.chat.id, await bot.download_file_by_id(message.video_note.file_id))
