@@ -1,4 +1,3 @@
-import json
 import logging
 import os
 from logging import config
@@ -40,14 +39,15 @@ MAX_SIZE = 8389000
 
 
 token = os.environ["BOT_TOKEN"]
-CONNECTED_CHATS_IDS = json.loads(os.environ.get("CONNECTED_CHATS_IDS"))
+CONNECTED_CHATS_IDS = os.environ.get("CONNECTED_CHATS_IDS").split(",")
+
 logging.info(f"connected chats ids is {CONNECTED_CHATS_IDS}")
 
 bot = Bot(token=token)
 dp = Dispatcher(bot)
 
 
-async def get_chat_title(chat_id):
+async def get_chat_title(chat_id: str) -> Optional[str]:
     try:
         return (await bot.get_chat(chat_id)).title
     except:
@@ -188,5 +188,5 @@ async def video_note_handler(message: Message) -> None:
 
 
 if __name__ == "__main__":
-    logging.info("start")
+    logging.info("start polling")
     executor.start_polling(dp)
