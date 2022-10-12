@@ -1,3 +1,14 @@
+from os import getenv
+
+BOT_TOKEN = getenv("BOT_TOKEN")
+CONNECTED_CHATS_IDS = getenv("CONNECTED_CHATS_IDS").split(",")
+
+
+MAX_DIMENSION = getenv("MAX_DIMENSION", 640)
+MAX_DURATION = getenv("MAX_DURATION", 60)
+MAX_SIZE = getenv("MAX_SIZE", 8389000)
+
+
 strings = {
     'ru': {
         'start': 'Приветствую, {}!\nЯ умею преобразовывать квадратные Видео в круглые '
@@ -30,5 +41,26 @@ strings = {
         'uploading': '<i>Doing some magic stuff...</i>',
         'webm': 'WebMs are currently unsupported 😓',
         'not_square': "It's not a square video (1:1 Aspect ratio)!",
+    },
+}
+
+log_config = {
+    "version":1,
+    "root":{
+        "handlers" : ["console"],
+        "level": "DEBUG",
+    },
+    "handlers":{
+        "console":{
+            "formatter": "std_out",
+            "stream": "ext://sys.stdout",
+            "class": "logging.StreamHandler",
+            "level": "DEBUG",
+        },
+    },
+    "formatters":{
+        "std_out": {
+            "format": "%(asctime)s %(levelname)-5.5s [%(name)s]:%(funcName)s#L%(lineno)s %(message)s",
+        }
     },
 }

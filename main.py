@@ -1,5 +1,4 @@
 import logging
-import os
 from logging import config
 from typing import Optional
 
@@ -8,50 +7,16 @@ from aiogram.types import (CallbackQuery, InlineKeyboardButton,
                            InlineKeyboardMarkup, Message)
 from aiogram.utils.markdown import quote_html
 
-from strings import strings
+from settings import (BOT_TOKEN, CONNECTED_CHATS_IDS, MAX_DIMENSION,
+                      MAX_DURATION, MAX_SIZE, log_config, strings)
+# from utils import check_dimensions, check_duration, check_size, lang, get_kb
 
-log_config = {
-    "version":1,
-    "root":{
-        "handlers" : ["console"],
-        "level": "DEBUG",
-    },
-    "handlers":{
-        "console":{
-            "formatter": "std_out",
-            "stream": "ext://sys.stdout",
-            "class": "logging.StreamHandler",
-            "level": "DEBUG",
-        },
-    },
-    "formatters":{
-        "std_out": {
-            "format": "%(asctime)s %(levelname)-5.5s [%(name)s]:%(funcName)s#L%(lineno)s %(message)s",
-        }
-    },
-}
 
 config.dictConfig(log_config)
-
-MAX_DIMENSION = 640
-MAX_DURATION = 60
-MAX_SIZE = 8389000
-
-
-token = os.environ["BOT_TOKEN"]
-CONNECTED_CHATS_IDS = os.environ.get("CONNECTED_CHATS_IDS").split(",")
-
 logging.info(f"connected chats ids is {CONNECTED_CHATS_IDS}")
-
-bot = Bot(token=token)
+logging.info(f"{MAX_SIZE=}, {MAX_DURATION=}, {MAX_DIMENSION=}")
+bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher(bot)
-
-
-async def get_chat_title(chat_id: str) -> Optional[str]:
-    try:
-        return (await bot.get_chat(chat_id)).title
-    except:
-        return None
 
 
 def lang(message: Message) -> str:
@@ -60,8 +25,15 @@ def lang(message: Message) -> str:
     return "en"
 
 
+async def get_chat_title(chat_id: str) -> Optional[str]:
+    try:
+        return (await bot.get_chat(chat_id)).title
+    except:
+        return None
+
 async def check_size(message: Message) -> bool:
     if message.video.file_size >= MAX_SIZE:
+        print(message.video.file_size, MAX_SIZE)
         await bot.send_message(message.chat.id, strings[lang(message)]["size_handler"], parse_mode="Markdown")
     return message.video.file_size < MAX_SIZE
 
@@ -77,6 +49,7 @@ async def check_dimensions(message: Message) -> bool:
         await bot.send_message(message.chat.id, strings[lang(message)]["not_square"])
         return False
     if message.video.height > MAX_DIMENSION or message.video.width > MAX_DIMENSION:
+        print(message.video.height, message.video.width)
         await bot.send_message(message.chat.id, strings[lang(message)]["dimensions_handler"])
         return False
     return True
@@ -100,7 +73,8 @@ async def callback_buttons(call: CallbackQuery) -> None:
             send_chat_id = call.data.replace("send-", "")
             data = call.message.video_note.file_id
             try:
-                m = await bot.send_video_note(chat_id=send_chat_id, video_note=data, )
+                m = await bot.send_video_note(chat_id=send_chat_id, video_note=data)
+                logging.info(f"video sended to {send_chat_id=}.")
             except Exception as e:
                 logging.error("Error sending videonote", e)
                 m = None
